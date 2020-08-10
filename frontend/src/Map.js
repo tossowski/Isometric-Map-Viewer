@@ -195,12 +195,32 @@ const Map = () => {
     }
   };
 
+  const zoomIn = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(1.1, 1.1);
+    drawChunks(ctx);
+  }
+
+  const zoomOut = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(0.9, 0.9);
+    drawChunks(ctx);
+  }
+
+
   return (
     <div>
-      <canvas ref={offScreenCanvasRef} className="offscreencanvas" width={canvasWidth} height={canvasHeight}></canvas>
-      <canvas ref={canvasRef} id="myCanvas" width={canvasWidth} height={canvasHeight}
-        onMouseUp={onMouseUpHandler} onMouseMove={onMouseMoveHandler} onMouseDown={onMouseDownHandler}></canvas>
-    </div >
+      <div>
+        <canvas ref={offScreenCanvasRef} className="offscreencanvas" width={canvasWidth} height={canvasHeight}></canvas>
+        <canvas ref={canvasRef} id="myCanvas" width={canvasWidth} height={canvasHeight}
+          onMouseUp={onMouseUpHandler} onMouseMove={onMouseMoveHandler} onMouseDown={onMouseDownHandler}></canvas>
+
+      </div >
+      <div><button onClick={zoomIn}>ZOOM IN</button>
+        <button onClick={zoomOut}>ZOOM OUT</button></div>
+    </div>
   );
 }
 
