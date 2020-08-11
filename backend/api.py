@@ -30,7 +30,7 @@ chunk_cache = set()
 
 @app.get('/data/chunk')
 async def requestChunk(startX: int, startZ: int, endX: int, endZ: int):
-    world_file = "/mnt/c/Users/Tim/AppData/Roaming/.minecraft/saves/monkaW"
+    world_file = "/mnt/c/Users/Tim/AppData/Roaming/.minecraft/saves/1_16_1"
     startx = startX
     startz = startZ
     endx = endX

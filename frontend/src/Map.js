@@ -26,7 +26,7 @@ const Map = () => {
   let imageHeight = 256 * heightOffset + mapChunkSize * 32 + 2 * minPadding;
   let canvasWidth = 800;
   let canvasHeight = 600;
-
+  let scaleFactor = 1;
 
   let image_cache = {};
 
@@ -92,8 +92,16 @@ const Map = () => {
     // x goes from 0, -16, -16, -32, -32
     // z goes from 0, 0, 16, 16, 32
 
+    chunkImages = [];
+    chunkCoords = [];
+    chunkLoadedCount = 0;
+
     let startX = mapTopLeftX - (mapTopLeftX % (mapChunkSize * 16));
     let startZ = mapTopLeftZ - (mapTopLeftZ % (mapChunkSize * 16));
+
+    // let startX = mapTopLeftX;
+    // let startZ = mapTopLeftZ;
+
 
 
     for (let j = 0; j < (canvasHeight + imageHeight) / (mapChunkSize * 16); j++) {
@@ -127,6 +135,8 @@ const Map = () => {
     mapTopLeftZ -= ydiff / 2;
     mapTopLeftZ -= xdiff / 4;
 
+    console.log(mapTopLeftX, mapTopLeftZ);
+
     //ctx.drawImage(offScreenCanvas, xdiff, ydiff);
     drawChunks(ctx);
 
@@ -152,8 +162,8 @@ const Map = () => {
       let xdiff = e.pageX - drag_start_x;
       let ydiff = e.pageY - drag_start_y;
 
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-      ctx.drawImage(offScreenCanvas, xdiff, ydiff);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(offScreenCanvas, xdiff, ydiff, offScreenCanvas.width / scaleFactor, offScreenCanvas.height / scaleFactor);
     }
   }
 
@@ -198,14 +208,30 @@ const Map = () => {
   const zoomIn = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.scale(1.1, 1.1);
+    const offScreenCanvas = offScreenCanvasRef.current;
+    const octx = offScreenCanvas.getContext("2d");
+    scaleFactor += 0.1;
+    ctx.resetTransform()
+    ctx.scale(scaleFactor, scaleFactor);
+
+
+    // octx.scale(1.1, 1.1);
+    // mapTopLeftX -= 0.1 * canvasWidth;
+    // mapTopLeftZ -= 0.1 * canvasHeight;
     drawChunks(ctx);
   }
 
   const zoomOut = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.scale(0.9, 0.9);
+    const offScreenCanvas = offScreenCanvasRef.current;
+    const octx = offScreenCanvas.getContext("2d");
+
+    scaleFactor -= 0.1;
+    ctx.resetTransform()
+    ctx.scale(scaleFactor, scaleFactor);
+
+    // octx.scale(0.9, 0.9);
     drawChunks(ctx);
   }
 
