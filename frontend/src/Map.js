@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 
 import './Map.css';
+import loadIcon from './loading.gif';
+import axios from 'axios';
 
 const Map = () => {
 
   let mapChunkSize = 16; // How many 16x16 minecraft chunks are in each map chunk
+
   let mapTopLeftX = 0;
   let mapTopLeftZ = 0;
   const canvasRef = React.useRef(null);
@@ -22,63 +25,108 @@ const Map = () => {
 
   const minPadding = 2;
   const heightOffset = 3;
-  let imageWidth = 2 * (mapChunkSize * 32 + minPadding);
   let imageHeight = 256 * heightOffset + mapChunkSize * 32 + 2 * minPadding;
   let canvasWidth = 800;
   let canvasHeight = 600;
+
+
+  // Zoom stuff
   let scaleFactor = 1;
+  const maxZoomOutLevel = 0.5;
+  const maxZoomInLevel = 2.0;
+
+  // User input
+  let userInputtedX = 0;
+  let userInputtedY = 0;
+  let userInputtedZ = 0;
+  let userInputtedMaxHeight = 255;
+  let userInputtedMinHeight = 0;
 
   let image_cache = {};
 
 
+  const resetCache = async () => {
+    image_cache = {};
+    const response = await axios.get(
+      'http://localhost:8000/data/reset'
+    ).then(function (response) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.fillRect(0, 0, canvas.width / scaleFactor, canvas.height / scaleFactor);
+
+      drawChunks(ctx);
+    });
+
+
+
+
+  }
+
+  const chunk2canvas = (x, z) => {
+    // Determining the x and y coordinate on the canvas to draw this chunk on:
+    // First, calculate how many chunks away this chunk is from the top left
+    let xChunks = (x - mapTopLeftX) / 16;
+    let zChunks = (z - mapTopLeftZ) / 16;
+
+
+    // Translate from 3D to isometric coordinates
+    let xCoord = xChunks * chunkWidth + zChunks * chunkWidth;
+    let yCoord = zChunks * chunkHeight - xChunks * chunkHeight;
+
+    return [xCoord, yCoord];
+  }
+
+  const canvas2chunk = (x, y) => {
+    // y += imageHeight;
+    // y -= mapChunkSize * chunkHeight;
+
+    let xBlocksFromTopLeft = (8 * x / (chunkWidth * scaleFactor)) - (8 * y / (chunkHeight * scaleFactor)) + mapTopLeftX;
+    let zBlocksFromTopLeft = (8 * x / (chunkWidth * scaleFactor)) + (8 * y / (chunkHeight * scaleFactor)) + mapTopLeftZ;
+
+    xBlocksFromTopLeft = xBlocksFromTopLeft > 0 ? Math.floor(xBlocksFromTopLeft) : Math.ceil(xBlocksFromTopLeft);
+    zBlocksFromTopLeft = zBlocksFromTopLeft > 0 ? Math.floor(zBlocksFromTopLeft) : Math.ceil(zBlocksFromTopLeft);
+
+    return [xBlocksFromTopLeft, zBlocksFromTopLeft]
+
+  }
+
   const getChunk = (startX, startZ, endX, endZ) => {
-    return 'http://localhost:8000/data/chunk?startX=' + startX + '&startZ=' + startZ + '&endX=' + endX + '&endZ=' + endZ;
+    return 'http://localhost:8000/data/chunk?startX=' + startX + '&startZ=' + startZ + '&endX=' + endX + '&endZ=' + endZ + '&minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + "&" + performance.now();
   }
 
   const render = (ctx) => {
 
-
     for (let i = 0; i < chunkImages.length; i++) {
-      ctx.drawImage(chunkImages[i], chunkCoords[i][0] - imageWidth / 2, chunkCoords[i][1] - imageHeight);
+      // if (chunkCoords[i][0] == 0 && chunkCoords[i][1] == 0) {
+      //   ctx.drawImage(chunkImages[i], chunkCoords[i][0], chunkCoords[i][1] - imageHeight + mapChunkSize * chunkHeight);
+      // }
+      ctx.drawImage(chunkImages[i], chunkCoords[i][0], chunkCoords[i][1] - imageHeight + mapChunkSize * chunkHeight);
+
     }
 
   }
 
   const loadChunk = (ctx, startX, startZ, endX, endZ) => {
     var imageObj = new Image();
+
     chunkImages.push(imageObj);
 
-    let key = startX.toString() + "_" + startZ.toString();
-
+    let key = startX.toString() + " " + startZ.toString() + " " + userInputtedMinHeight.toString() + " " + userInputtedMaxHeight.toString();
+    imageObj.crossOrigin = "anonymous";
     if (key in image_cache) {
-      imageObj.src = image_cache[key];
+      imageObj.src = image_cache[key]
     } else {
+
       imageObj.src = getChunk(startX, startZ, endX, endZ);
     }
 
 
 
-    // Determining the x and y coordinate on the canvas to draw this chunk on:
-
-
-    // First, calculate how many chunks away this chunk is from the top left
-    let xChunks = (startX - mapTopLeftX) / 16;
-    let zChunks = (startZ - mapTopLeftZ) / 16;
-
-    // Compute the remaining amount of blocks
-    let xRemainder = (startX - mapTopLeftX) % 16;
-    let zRemainder = (startZ - mapTopLeftZ) % 16;
-
-    // Translate from 3D to isometric coordinates
-    let xCoord = xChunks * chunkWidth + zChunks * chunkWidth + xRemainder + zRemainder;
-    let yCoord = zChunks * chunkHeight + zRemainder - xChunks * chunkHeight - xRemainder;
-
-    chunkCoords.push([xCoord, yCoord]);
+    let canvasCoords = chunk2canvas(startX, startZ);
+    chunkCoords.push([canvasCoords[0], canvasCoords[1]]);
 
     imageObj.onload = function () {
-      if ((key in image_cache)) {
-        image_cache[key] = imageObj.src;
-      }
+      image_cache[key] = imageObj.src;
       if (++chunkLoadedCount >= chunkImages.length) {
         render(ctx);
       }
@@ -96,25 +144,58 @@ const Map = () => {
     chunkCoords = [];
     chunkLoadedCount = 0;
 
-    let startX = mapTopLeftX - (mapTopLeftX % (mapChunkSize * 16));
-    let startZ = mapTopLeftZ - (mapTopLeftZ % (mapChunkSize * 16));
+    let startX = mapTopLeftX - (mapTopLeftX % (mapChunkSize * chunkHeight));
+    let startZ = mapTopLeftZ - (mapTopLeftZ % (mapChunkSize * chunkHeight)) - mapChunkSize * chunkHeight;
+
+
+    // let startX = 0;
+    // let startZ = 0;
+
+    //let startX = mapTopLeftX - (mapTopLeftX % 16);
+    //let startZ = mapTopLeftZ - (mapTopLeftZ % 16);
 
     // let startX = mapTopLeftX;
     // let startZ = mapTopLeftZ;
 
+    let newcoordinates = [];
+    let allcoordinates = [];
+    let key = "";
 
+    for (let j = 0; j < (canvasHeight + 2 * mapChunkSize * chunkHeight) / (mapChunkSize * chunkHeight * scaleFactor) + 2; j++) {
 
-    for (let j = 0; j < (canvasHeight + imageHeight) / (mapChunkSize * 16); j++) {
-
-      if (j % 2 == 1 && j > 0) {
+      if (j % 2 !== 1 && j !== 0) {
         startX -= mapChunkSize * 16;
-      } else if (j % 2 == 0 && j > 0) {
+      } else if (j % 2 !== 0 && j !== 0) {
         startZ += mapChunkSize * 16;
       }
-      for (let i = -1; i < canvasWidth / imageWidth + 2; i++) {
-        loadChunk(ctx, startX + i * mapChunkSize * 16, startZ + i * mapChunkSize * 16, startX + (i + 1) * mapChunkSize * 16, startZ + (i + 1) * mapChunkSize * 16);
+      for (let i = -1; i < (canvasWidth + 2 * mapChunkSize * chunkHeight) / (chunkWidth * mapChunkSize * scaleFactor); i++) {
+        key = (startX + i * mapChunkSize * 16).toString() + " " + (startZ + i * mapChunkSize * 16).toString();
+        if (!(key in image_cache)) { // If never seen this chunk before
+          newcoordinates.push([startX + i * mapChunkSize * 16, startZ + i * mapChunkSize * 16, startX + (i + 1) * mapChunkSize * 16 - 1, startZ + (i + 1) * mapChunkSize * 16 - 1]);
+        }
+        allcoordinates.push([startX + i * mapChunkSize * 16, startZ + i * mapChunkSize * 16, startX + (i + 1) * mapChunkSize * 16 - 1, startZ + (i + 1) * mapChunkSize * 16 - 1]);
+
+        // console.log(coordinates);
       }
     }
+
+
+    // Telling server to generate new chunks
+
+    if (newcoordinates.length > 0) {
+      let response = axios({
+        method: 'post',
+        url: 'http://localhost:8000/data/loadChunks?minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight,
+        data: newcoordinates
+      })
+    }
+
+
+
+    allcoordinates.forEach(coordinate => loadChunk(ctx, coordinate[0], coordinate[1], coordinate[2], coordinate[3]));
+
+
+
 
 
 
@@ -125,7 +206,6 @@ const Map = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    const offScreenCanvas = offScreenCanvasRef.current;
 
     let xdiff = (e.pageX - drag_start_x);
     let ydiff = (e.pageY - drag_start_y);
@@ -135,9 +215,7 @@ const Map = () => {
     mapTopLeftZ -= ydiff / 2;
     mapTopLeftZ -= xdiff / 4;
 
-    console.log(mapTopLeftX, mapTopLeftZ);
 
-    //ctx.drawImage(offScreenCanvas, xdiff, ydiff);
     drawChunks(ctx);
 
 
@@ -155,42 +233,52 @@ const Map = () => {
   }
 
   const onMouseMoveHandler = (e) => {
+    const canvas = canvasRef.current;
+
     if (dragging) {
-      const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       const offScreenCanvas = offScreenCanvasRef.current;
       let xdiff = e.pageX - drag_start_x;
       let ydiff = e.pageY - drag_start_y;
 
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, canvas.width / scaleFactor, canvas.height / scaleFactor);
+
       ctx.drawImage(offScreenCanvas, xdiff, ydiff, offScreenCanvas.width / scaleFactor, offScreenCanvas.height / scaleFactor);
     }
+    // } else {
+    //   const rect = canvas.getBoundingClientRect()
+    //   const x = e.clientX - rect.left
+    //   const y = e.clientY - rect.top
+    // }
   }
 
   document.onkeydown = function (e) {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+
     switch (e.keyCode) {
       case 37:
         // Left Arrow Key
-        mapTopLeftX -= 16;
-        mapTopLeftZ -= 16;
+        mapTopLeftX -= 8;
+        mapTopLeftZ -= 8;
 
-        drawChunks(ctx);
+
         break;
       case 38:
         // Up Arrow Key
         mapTopLeftX += 16;
         mapTopLeftZ -= 16;
 
-        drawChunks(ctx);
+
+
         break;
       case 39:
         // Right Arrow Key
-        mapTopLeftX += 16;
-        mapTopLeftZ += 16;
+        mapTopLeftX += 8;
+        mapTopLeftZ += 8;
 
-        drawChunks(ctx);
+
+
         break;
 
       case 40:
@@ -198,22 +286,30 @@ const Map = () => {
         mapTopLeftX -= 16;
         mapTopLeftZ += 16;
 
-        drawChunks(ctx);
+
+
+
         break;
 
       default:
+
+        return;
     }
+    drawChunks(ctx);
   };
 
   const zoomIn = () => {
+
+    if (scaleFactor >= maxZoomInLevel) {
+      return;
+    }
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const offScreenCanvas = offScreenCanvasRef.current;
-    const octx = offScreenCanvas.getContext("2d");
     scaleFactor += 0.1;
     ctx.resetTransform()
     ctx.scale(scaleFactor, scaleFactor);
-
 
     // octx.scale(1.1, 1.1);
     // mapTopLeftX -= 0.1 * canvasWidth;
@@ -222,31 +318,135 @@ const Map = () => {
   }
 
   const zoomOut = () => {
+    if (scaleFactor <= maxZoomOutLevel) {
+      return;
+    }
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const offScreenCanvas = offScreenCanvasRef.current;
-    const octx = offScreenCanvas.getContext("2d");
 
     scaleFactor -= 0.1;
     ctx.resetTransform()
     ctx.scale(scaleFactor, scaleFactor);
 
+
+
     // octx.scale(0.9, 0.9);
     drawChunks(ctx);
   }
 
+  const setCoordinates = (e) => {
+    e.preventDefault();
+
+    if (Number.isNaN(userInputtedX) || Number.isNaN(userInputtedZ) || Number.isNaN(userInputtedY)) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.fillRect(0, 0, canvas.width / scaleFactor, canvas.height / scaleFactor);
+    // ctx.resetTransform();
+
+    mapTopLeftX = 0;
+    mapTopLeftZ = 0;
+
+    let coords = canvas2chunk(canvas.width / 2, canvas.height / 2);
+    console.log(coords);
+
+    //let coords = canvas2chunk(canvasWidth / 2, canvasHeight / 2);
+    mapTopLeftX = userInputtedX - coords[0] + userInputtedY * 1.5;
+    mapTopLeftZ = userInputtedZ - coords[1] - userInputtedY * 1.5;
+
+    drawChunks(ctx);
+  }
+
+  const setUserInputtedX = (e) => {
+    userInputtedX = Number(e.target.value);
+  }
+  const setUserInputtedY = (e) => {
+    userInputtedY = Number(e.target.value);
+  }
+  const setUserInputtedZ = (e) => {
+    userInputtedZ = Number(e.target.value);
+  }
+  const setUserInputtedMaxHeight = (e) => {
+    userInputtedMaxHeight = Number(e.target.value);
+  }
+  const setUserInputtedMinHeight = (e) => {
+    userInputtedMinHeight = Number(e.target.value);
+  }
+
+  const handleFolderUpload = (e) => {
+    console.log(e.target.files);
+  }
+
+  const saveImage = (e) => {
+    const canvas = canvasRef.current;
+    const dataURL = canvas.toDataURL("image/png");
+    document.write('<img src="' + dataURL + '"/>');
+
+  }
+
+
 
   return (
     <div>
-      <div>
+      <div className="mapContainer">
+        <div className="uploadContainer">
+          <p className="uploadText">Upload your world here:</p>
+          <input directory="" webkitdirectory="" type="file" onChange={handleFolderUpload} />
+        </div>
+
         <canvas ref={offScreenCanvasRef} className="offscreencanvas" width={canvasWidth} height={canvasHeight}></canvas>
-        <canvas ref={canvasRef} id="myCanvas" width={canvasWidth} height={canvasHeight}
+        <canvas ref={canvasRef} className="canvas" width={canvasWidth} height={canvasHeight}
           onMouseUp={onMouseUpHandler} onMouseMove={onMouseMoveHandler} onMouseDown={onMouseDownHandler}></canvas>
+        <div className="buttonsContainer">
+
+          <div className="zoomButtonsContainer">
+            <button className="zoomButton" onClick={zoomIn}><span className="material-icons">
+              zoom_in
+            </span></button>
+            <button className="zoomButton" onClick={zoomOut}><span className="material-icons">
+              zoom_out
+            </span></button>
+          </div>
+
+
+          <form className="coordForm" onSubmit={setCoordinates}>
+            <p className="uploadText">Go to coordinates:</p>
+            <div className="coordInput">x<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedX} /></div>
+            <div className="coordInput">y<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedY} /></div>
+            <div className="coordInput">z<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedZ} /> </div>
+
+          </form>
+
+          <form className="coordForm" onSubmit={setCoordinates}>
+            <p className="uploadText">Set min and max height:</p>
+            <div className="coordInput">y max<input className="coords" type="text" defaultValue={255} onChange={setUserInputtedMaxHeight} /></div>
+            <div className="coordInput">y min<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedMinHeight} /></div>
+
+
+
+            <input type="submit" value="Render" />
+          </form>
+
+
+
+          <input type="submit" value="Reset" onClick={resetCache} />
+
+
+        </div>
 
       </div >
-      <div><button onClick={zoomIn}>ZOOM IN</button>
-        <button onClick={zoomOut}>ZOOM OUT</button></div>
-    </div>
+      <div className="saveContainer">
+        <p className="saveText">Save current image:</p>
+        <input className="saveButton" type="submit" value="Save" onClick={saveImage} />
+      </div></div>
+
+
+
+
   );
 }
 
