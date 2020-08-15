@@ -35,6 +35,7 @@
 }
 
 .buttonsContainer {
+  padding: 20px;
   flex-basis: 100%;
   display:flex;
   flex-direction: column;
@@ -104,3 +105,56 @@
   align-self: flex-start;
 }
 
+.buttons {
+  align-self: flex-start;
+  margin-top: 12px;
+}
+.buttons select, .buttons input {
+  display: block;
+}
+
+.buttons select {
+
+
+}
+
+.button {
+  background: none;
+  color: white;
+  border: 1px solid #EAEAEA;
+  border-radius: 2px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  margin: 8px 0;
+  transition: background 0.15s;
+}
+
+.button:hover {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.input {
+  padding: 4px;
+  border-radius: 3px;
+  border: 0;
+}
+
+.input-row {
+  margin-bottom: 4px;
+}
+
+.label {
+  width: 40px;
+  font-size: 14px;
+  text-align: right;
+}
+
+select {
+  margin-bottom: 12px;
+  padding: 4px 0;
+}

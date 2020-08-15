@@ -63,3 +63,5 @@ typings/
 # ignore cached chunks:
 backend/chunks/
 bakcend/__pycache__/
+.idea/
+./world

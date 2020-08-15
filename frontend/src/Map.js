@@ -429,28 +429,41 @@ const Map = () => {
 
           <form className="coordForm" onSubmit={setCoordinates}>
             <p className="uploadText">Go to coordinates:</p>
-            <div className="coordInput">x<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedX} /></div>
-            <div className="coordInput">y<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedY} /></div>
-            <div className="coordInput">z<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedZ} /> </div>
-            <input type="submit" value="Go" onClick={setCoordinates} />
+            <div className="input-row">
+              <div className="coordInput"><span className="label">x</span><input className="input coords" type="text" defaultValue={0} onChange={setUserInputtedX} /></div>
+            </div>
+            <div className="input-row">
+              <div className="coordInput"><span className="label">y</span><input className="input coords" type="text" defaultValue={0} onChange={setUserInputtedY} /></div>
+            </div>
+            <div className="input-row">
+              <div className="coordInput"><span className="label">z</span><input className="input coords" type="text" defaultValue={0} onChange={setUserInputtedZ} /> </div>
+            </div>
+            <div className="input-row">
+              <input className="button" type="submit" value="Go" onClick={setCoordinates} />
+            </div>
           </form>
 
           <form className="coordForm">
             <p className="uploadText">Set min and max height:</p>
-            <div className="coordInput">y max<input className="coords" type="text" defaultValue={255} onChange={setUserInputtedMaxHeight} /></div>
-            <div className="coordInput">y min<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedMinHeight} /></div>
-
+            <div className="input-row">
+              <div className="coordInput"><span className="label">y max</span><input className="input coords" type="text" defaultValue={255} onChange={setUserInputtedMaxHeight} /></div>
+            </div>
+            <div className="input-row">
+              <div className="coordInput"><span className="label">y min</span><input className="input coords" type="text" defaultValue={0} onChange={setUserInputtedMinHeight} /></div>
+            </div>
           </form>
 
-          <select className="dimensionSelect" onChange={setDimension}>
-            <option value="overworld">Overworld</option>
-            <option value="the_nether">Nether</option>
-            <option value="the_end">End</option>
-          </select>
+          <div className="buttons">
+            <select className="dimensionSelect" onChange={setDimension}>
+              <option value="overworld">Overworld</option>
+              <option value="the_nether">Nether</option>
+              <option value="the_end">End</option>
+            </select>
 
 
-          <input type="submit" value="Render" onClick={draw} />
-          <input type="submit" value="Reset Cached Images" onClick={resetCache} />
+            <input className="button" type="submit" value="Render" onClick={draw} />
+            <input className="button" type="submit" value="Reset Cached Images" onClick={resetCache} />
+          </div>
 
 
         </div>
