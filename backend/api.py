@@ -117,6 +117,8 @@ if __name__ == "__main__":
     if ON_HEROKU:
         # get the heroku port
         portnum = int(os.environ.get('PORT', 17995))  # as per OP comments default is 17995
+        hostname = "0.0.0.0"
     else:
         portnum = 8000
-    uvicorn.run("api:app", host="127.0.0.1", port=portnum, log_level="info")
+        hostname = "127.0.0.1"
+    uvicorn.run("api:app", host=hostname, port=portnum, log_level="info")
