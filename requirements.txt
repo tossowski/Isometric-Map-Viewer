@@ -1,4 +1,6 @@
 astroid==2.3.3
+aiofiles
+fastapi
 Click==7.0
 colorama==0.4.3
 fastapi==0.47.1
