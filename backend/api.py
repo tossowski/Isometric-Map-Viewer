@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Tuple, Optional
 from starlette.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+import uvicorn 
 
 from typing import List
 import os
@@ -32,7 +33,7 @@ def clearCache():
     chunk_cache.clear()
 
 def loadChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: int, dim:str, cache=chunk_cache):
-    world_file = "/mnt/c/Users/Tim/AppData/Roaming/.minecraft/saves/1_16_1"
+    world_file = "worlds/1_16_1"
     startx = startX
     startz = startZ
     endx = endX
@@ -46,12 +47,12 @@ def loadChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: i
     if (key in cache):
         return cache[key]
 
-    exit_code = os.system("./mcmap -from {} {} -to {} {} -min {} -max {} -{} -padding {} -dim {} {}  -file chunks/{}_{}_{}_{}_{}.png".format(startx, startz, endx, endz, miny, maxy, direction, padding, dim, world_file, startx, startz, minY, maxY, dim))
+    exit_code = os.system("./backend/mcmap -from {} {} -to {} {} -min {} -max {} -{} -padding {} -dim {} {}  -file backend/chunks/{}_{}_{}_{}_{}.png".format(startx, startz, endx, endz, miny, maxy, direction, padding, dim, world_file, startx, startz, minY, maxY, dim))
 
     if (exit_code != 0):
-        cache[key] = FileResponse('./missing_chunk.png', media_type="image/png")
+        cache[key] = FileResponse('./backend/missing_chunk.png', media_type="image/png")
     else:
-        cache[key] = FileResponse("./chunks/{}_{}_{}_{}_{}.png".format(startx, startz, minY, maxY, dim), media_type="image/png")
+        cache[key] = FileResponse("./backend/chunks/{}_{}_{}_{}_{}.png".format(startx, startz, minY, maxY, dim), media_type="image/png")
     return cache[key]
 
 #coords: [[xstart,zstart,xend,zend], [xstart2,zstart2,xend2,zend2],...]
@@ -104,8 +105,10 @@ async def reset():
 
 @app.get('/')
 def index():
-    return FileResponse('../build/index.html')
+    return FileResponse('./build/index.html')
 
-app.mount("/", StaticFiles(directory="../build/"), name="static")
+app.mount("/", StaticFiles(directory="./build/"), name="static")
 
     
+if __name__ == "__main__":
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, log_level="info")
