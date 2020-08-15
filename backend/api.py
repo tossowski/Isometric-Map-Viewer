@@ -15,10 +15,6 @@ MAX_WORKERS = 10
 # https://fastapi.tiangolo.com/tutorial/cors/
 from fastapi.middleware.cors import CORSMiddleware
 
-origins = [
-    "http://localhost:3000"
-]
-
 app = FastAPI()
 
 # Do this to allow requests from our frontend, which is hosted on port 3000
@@ -50,7 +46,7 @@ def loadChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: i
     if (key in cache):
         return cache[key]
 
-    exit_code = os.system("/mnt/c/Users/Tim/Desktop/Code/mcmap/mcmap -from {} {} -to {} {} -min {} -max {} -{} -padding {} -dim {} {}  -file chunks/{}_{}_{}_{}_{}.png".format(startx, startz, endx, endz, miny, maxy, direction, padding, dim, world_file, startx, startz, minY, maxY, dim))
+    exit_code = os.system("./mcmap -from {} {} -to {} {} -min {} -max {} -{} -padding {} -dim {} {}  -file chunks/{}_{}_{}_{}_{}.png".format(startx, startz, endx, endz, miny, maxy, direction, padding, dim, world_file, startx, startz, minY, maxY, dim))
 
     if (exit_code != 0):
         cache[key] = FileResponse('./missing_chunk.png', media_type="image/png")
@@ -104,5 +100,12 @@ async def reset():
     clearCache()
     code = os.system("rm -rf chunks/*.png")
     return code
+
+
+@app.get('/')
+def index():
+    return FileResponse('../build/index.html')
+
+app.mount("/", StaticFiles(directory="../build/"), name="static")
 
     

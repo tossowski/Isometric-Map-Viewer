@@ -50,7 +50,7 @@ const Map = () => {
   const resetCache = async () => {
     image_cache = {};
     const response = await axios.get(
-      'http://localhost:8000/data/reset'
+      'data/reset'
     ).then(function (response) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
@@ -93,7 +93,7 @@ const Map = () => {
   }
 
   const getChunk = (startX, startZ, endX, endZ) => {
-    return 'http://localhost:8000/data/chunk?startX=' + startX + '&startZ=' + startZ + '&endX=' + endX + '&endZ=' + endZ + '&minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + "&dim=" + dimension + "&" + performance.now();
+    return 'data/chunk?startX=' + startX + '&startZ=' + startZ + '&endX=' + endX + '&endZ=' + endZ + '&minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + "&dim=" + dimension + "&" + performance.now();
   }
 
   const render = (ctx) => {
@@ -187,10 +187,12 @@ const Map = () => {
 
     // Telling server to generate new chunks
 
+    console.log("asdf");
+
     if (newcoordinates.length > 4) {
       let response = axios({
         method: 'post',
-        url: 'http://localhost:8000/data/loadChunks?minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + '&dim=' + dimension,
+        url: '/data/loadChunks?minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + '&dim=' + dimension,
         data: newcoordinates
       })
     }
