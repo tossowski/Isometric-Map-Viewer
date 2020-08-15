@@ -25,6 +25,7 @@ const Map = () => {
 
   const minPadding = 2;
   const heightOffset = 3;
+  let imageWidth = (mapChunkSize * 32 + 2 * minPadding) * 2;
   let imageHeight = 256 * heightOffset + mapChunkSize * 32 + 2 * minPadding;
   let canvasWidth = 800;
   let canvasHeight = 600;
@@ -41,6 +42,7 @@ const Map = () => {
   let userInputtedZ = 0;
   let userInputtedMaxHeight = 255;
   let userInputtedMinHeight = 0;
+  let dimension = "overworld";
 
   let image_cache = {};
 
@@ -91,7 +93,7 @@ const Map = () => {
   }
 
   const getChunk = (startX, startZ, endX, endZ) => {
-    return 'http://localhost:8000/data/chunk?startX=' + startX + '&startZ=' + startZ + '&endX=' + endX + '&endZ=' + endZ + '&minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + "&" + performance.now();
+    return 'http://localhost:8000/data/chunk?startX=' + startX + '&startZ=' + startZ + '&endX=' + endX + '&endZ=' + endZ + '&minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + "&dim=" + dimension + "&" + performance.now();
   }
 
   const render = (ctx) => {
@@ -111,7 +113,7 @@ const Map = () => {
 
     chunkImages.push(imageObj);
 
-    let key = startX.toString() + " " + startZ.toString() + " " + userInputtedMinHeight.toString() + " " + userInputtedMaxHeight.toString();
+    let key = startX.toString() + " " + startZ.toString() + " " + userInputtedMinHeight.toString() + " " + userInputtedMaxHeight.toString() + " " + dimension;
     imageObj.crossOrigin = "anonymous";
     if (key in image_cache) {
       imageObj.src = image_cache[key]
@@ -144,8 +146,8 @@ const Map = () => {
     chunkCoords = [];
     chunkLoadedCount = 0;
 
-    let startX = mapTopLeftX - (mapTopLeftX % (mapChunkSize * chunkHeight));
-    let startZ = mapTopLeftZ - (mapTopLeftZ % (mapChunkSize * chunkHeight)) - mapChunkSize * chunkHeight;
+    let startX = Math.floor(mapTopLeftX / 256) * 256;;
+    let startZ = Math.floor(mapTopLeftZ / 256) * 256;
 
 
     // let startX = 0;
@@ -161,31 +163,34 @@ const Map = () => {
     let allcoordinates = [];
     let key = "";
 
-    for (let j = 0; j < (canvasHeight + 2 * mapChunkSize * chunkHeight) / (mapChunkSize * chunkHeight * scaleFactor) + 2; j++) {
+    let factor = scaleFactor > 1 ? 1 : scaleFactor
 
-      if (j % 2 !== 1 && j !== 0) {
+    for (let j = 0; j < (canvasHeight) / (mapChunkSize * chunkHeight * factor) + 2; j++) {
+      // for (let j = 0; j < 1; j++) {
+
+      if (j % 2 !== 0 && j !== 0) {
         startX -= mapChunkSize * 16;
-      } else if (j % 2 !== 0 && j !== 0) {
+      } else if (j % 2 !== 1 && j !== 0) {
         startZ += mapChunkSize * 16;
       }
-      for (let i = -1; i < (canvasWidth + 2 * mapChunkSize * chunkHeight) / (chunkWidth * mapChunkSize * scaleFactor); i++) {
-        key = (startX + i * mapChunkSize * 16).toString() + " " + (startZ + i * mapChunkSize * 16).toString();
+      for (let i = 0; i < (canvasWidth + 2 * mapChunkSize * chunkHeight) / (imageWidth * factor); i++) {
+        key = (startX + i * mapChunkSize * 16).toString() + " " + (startZ + i * mapChunkSize * 16).toString() + " " + userInputtedMinHeight.toString() + " " + userInputtedMaxHeight.toString() + " " + dimension;
         if (!(key in image_cache)) { // If never seen this chunk before
           newcoordinates.push([startX + i * mapChunkSize * 16, startZ + i * mapChunkSize * 16, startX + (i + 1) * mapChunkSize * 16 - 1, startZ + (i + 1) * mapChunkSize * 16 - 1]);
         }
         allcoordinates.push([startX + i * mapChunkSize * 16, startZ + i * mapChunkSize * 16, startX + (i + 1) * mapChunkSize * 16 - 1, startZ + (i + 1) * mapChunkSize * 16 - 1]);
 
-        // console.log(coordinates);
       }
     }
 
 
+
     // Telling server to generate new chunks
 
-    if (newcoordinates.length > 0) {
+    if (newcoordinates.length > 4) {
       let response = axios({
         method: 'post',
-        url: 'http://localhost:8000/data/loadChunks?minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight,
+        url: 'http://localhost:8000/data/loadChunks?minY=' + userInputtedMinHeight + '&maxY=' + userInputtedMaxHeight + '&dim=' + dimension,
         data: newcoordinates
       })
     }
@@ -352,12 +357,18 @@ const Map = () => {
     mapTopLeftZ = 0;
 
     let coords = canvas2chunk(canvas.width / 2, canvas.height / 2);
-    console.log(coords);
 
     //let coords = canvas2chunk(canvasWidth / 2, canvasHeight / 2);
-    mapTopLeftX = userInputtedX - coords[0] + userInputtedY * 1.5;
-    mapTopLeftZ = userInputtedZ - coords[1] - userInputtedY * 1.5;
+    mapTopLeftX = userInputtedX - coords[0] + (userInputtedY) * 1.5;
+    mapTopLeftZ = userInputtedZ - coords[1] - (userInputtedY) * 1.5;
 
+    drawChunks(ctx);
+  }
+
+  const draw = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.fillRect(0, 0, canvas.width / scaleFactor, canvas.height / scaleFactor);
     drawChunks(ctx);
   }
 
@@ -375,6 +386,9 @@ const Map = () => {
   }
   const setUserInputtedMinHeight = (e) => {
     userInputtedMinHeight = Number(e.target.value);
+  }
+  const setDimension = (e) => {
+    dimension = e.target.value;
   }
 
   const handleFolderUpload = (e) => {
@@ -418,22 +432,25 @@ const Map = () => {
             <div className="coordInput">x<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedX} /></div>
             <div className="coordInput">y<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedY} /></div>
             <div className="coordInput">z<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedZ} /> </div>
-
+            <input type="submit" value="Go" onClick={setCoordinates} />
           </form>
 
-          <form className="coordForm" onSubmit={setCoordinates}>
+          <form className="coordForm">
             <p className="uploadText">Set min and max height:</p>
             <div className="coordInput">y max<input className="coords" type="text" defaultValue={255} onChange={setUserInputtedMaxHeight} /></div>
             <div className="coordInput">y min<input className="coords" type="text" defaultValue={0} onChange={setUserInputtedMinHeight} /></div>
 
-
-
-            <input type="submit" value="Render" />
           </form>
 
+          <select className="dimensionSelect" onChange={setDimension}>
+            <option value="overworld">Overworld</option>
+            <option value="the_nether">Nether</option>
+            <option value="the_end">End</option>
+          </select>
 
 
-          <input type="submit" value="Reset" onClick={resetCache} />
+          <input type="submit" value="Render" onClick={draw} />
+          <input type="submit" value="Reset Cached Images" onClick={resetCache} />
 
 
         </div>

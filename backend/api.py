@@ -35,7 +35,7 @@ chunk_cache = {}
 def clearCache():
     chunk_cache.clear()
 
-def loadChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: int, cache=chunk_cache):
+def loadChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: int, dim:str, cache=chunk_cache):
     world_file = "/mnt/c/Users/Tim/AppData/Roaming/.minecraft/saves/1_16_1"
     startx = startX
     startz = startZ
@@ -45,33 +45,32 @@ def loadChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: i
     maxy = maxY
     padding = 0
     direction = 'ne'
-    key = "{}_{}_{}_{}".format(startx, startz, minY, maxY)
+    key = "{}_{}_{}_{}_{}".format(startx, startz, minY, maxY,dim)
     
     if (key in cache):
-        print("returning cached key")
         return cache[key]
 
-    os.system("/mnt/c/Users/Tim/Desktop/Code/mcmap/mcmap -from {} {} -to {} {} -min {} -max {} -{} -padding {} -splits 1 {}  -file chunks/{}_{}_{}_{}.png".format(startx, startz, endx, endz, miny, maxy, direction, padding, world_file, startx, startz, minY, maxY))
-    
-    cache[key] = FileResponse("./chunks/{}_{}_{}_{}.png".format(startx, startz, minY, maxY), media_type="image/png")
+    exit_code = os.system("/mnt/c/Users/Tim/Desktop/Code/mcmap/mcmap -from {} {} -to {} {} -min {} -max {} -{} -padding {} -dim {} {}  -file chunks/{}_{}_{}_{}_{}.png".format(startx, startz, endx, endz, miny, maxy, direction, padding, dim, world_file, startx, startz, minY, maxY, dim))
+
+    if (exit_code != 0):
+        cache[key] = FileResponse('./missing_chunk.png', media_type="image/png")
+    else:
+        cache[key] = FileResponse("./chunks/{}_{}_{}_{}_{}.png".format(startx, startz, minY, maxY, dim), media_type="image/png")
     return cache[key]
 
 #coords: [[xstart,zstart,xend,zend], [xstart2,zstart2,xend2,zend2],...]
-def loadChunksFromCoords(coords, cache, minY, maxY):
+def loadChunksFromCoords(coords, cache, minY, maxY, dim):
     for coord in coords:
-        loadChunk(coord[0], coord[1], coord[2], coord[3], minY, maxY, cache)
+        loadChunk(coord[0], coord[1], coord[2], coord[3], minY, maxY, dim, cache)
 
 @app.get('/data/chunk')
-async def requestChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: int):
-    return loadChunk(startX, startZ, endX, endZ, minY, maxY)
+async def requestChunk(startX: int, startZ: int, endX: int, endZ: int, minY: int, maxY: int, dim: str):
+    return loadChunk(startX, startZ, endX, endZ, minY, maxY, dim)
 
 @app.post('/data/loadChunks')
-async def loadChunks(coords : List[List[int]], minY:int, maxY:int):
+async def loadChunks(coords : List[List[int]], minY:int, maxY:int, dim:str):
     manager = Manager()
     processes = []
-    print(coords)
-    print(minY)
-    print(maxY)
     cache = manager.dict()
 
     for key in chunk_cache.keys():
@@ -84,10 +83,10 @@ async def loadChunks(coords : List[List[int]], minY:int, maxY:int):
     for i in range(NUM_PROCESSES):
         if i == NUM_PROCESSES - 1:
             chunks = coords[i*chunks_per_process:]
-            p = Process(target=loadChunksFromCoords, args=(chunks, cache, minY, maxY))
+            p = Process(target=loadChunksFromCoords, args=(chunks, cache, minY, maxY, dim))
         else:
             chunks = coords[i*chunks_per_process:(i+1)*chunks_per_process]
-            p = Process(target=loadChunksFromCoords, args=(chunks, cache, minY, maxY))
+            p = Process(target=loadChunksFromCoords, args=(chunks, cache, minY, maxY, dim))
         
         processes.append(p)
         p.start()
