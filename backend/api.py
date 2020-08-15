@@ -111,4 +111,12 @@ app.mount("/", StaticFiles(directory="./build/"), name="static")
 
     
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, log_level="info")
+
+    ON_HEROKU = os.environ.get('ON_HEROKU')
+
+    if ON_HEROKU:
+        # get the heroku port
+        portnum = int(os.environ.get('PORT', 17995))  # as per OP comments default is 17995
+    else:
+        portnum = 8000
+    uvicorn.run("api:app", host="127.0.0.1", port=portnum, log_level="info")
